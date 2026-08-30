@@ -1,50 +1,73 @@
 # CashFlow Sentinel
 
-An autonomous financial-diagnosis agent for small businesses in emerging markets.
+**Agentic SME Financial Risk Monitor**
 
-CashFlow Sentinel reads a business's transaction ledger, builds a financial picture,
-detects early-warning problems, investigates each problem by drilling into the ledger,
-quantifies the impact, recommends operational actions, ranks priorities, and writes a
-one-page management summary.
+CashFlow Sentinel is a lightweight financial-risk monitoring MVP built for the **Global AI Hackathon — Powered by Mel** in the **Agentic Finance** track.
 
-**Track:** Agentic Finance · **Audience:** African SMEs & founders (cash-first
-businesses running on M-Pesa / bank transfers / cash).
+It turns transaction-level SME data into a concise management view: key cash-flow metrics, prioritized financial risks, numerical evidence, and practical operational actions.
 
-## The agentic workflow
+> **Demo scenario:** a synthetic Nairobi bakery operating in Kenyan Shillings (KES) across M-Pesa, bank, and cash transactions.
 
-The agent runs a visible `READ → ANALYZE → DETECT → INVESTIGATE → QUANTIFY →
-RECOMMEND → PRIORITIZE → SUMMARIZE` loop. Every step lands in a trace that the UI
-renders live, so the autonomous decision-making is observable rather than hidden.
+## Why this matters
+
+Many small businesses have transaction records but no dedicated finance team to continuously interpret them. Problems such as rising costs, customer concentration, and short-term cash deficits can therefore become serious before management acts.
+
+CashFlow Sentinel is designed to shorten that gap between **data** and **decision**.
+
+## What the MVP does
+
+The dashboard provides:
+
+- Total inflows and total outflows
+- Net cash flow
+- Revenue concentration
+- Recent expense growth
+- Monthly cash-flow trend
+- Three prioritized financial risks (`P0`, `P1`, `P2`)
+- Numerical evidence for each flagged risk
+- One practical management action per risk
+- A concise management summary
+
+The final demo currently identifies risks such as an **inventory-cost surge**, **revenue concentration**, and a **monthly cash deficit**.
+
+## Agentic workflow
+
+CashFlow Sentinel demonstrates the following financial-triage loop:
+
+`READ → DETECT → INVESTIGATE → RANK → RECOMMEND`
+
+1. **Read** transaction-level business data.
+2. **Detect** unusual or decision-relevant financial signals.
+3. **Investigate** the underlying metrics and monthly patterns.
+4. **Rank** the most important issues as P0, P1, and P2.
+5. **Recommend** an operational response supported by numerical evidence.
+
+The current hackathon MVP deliberately uses **deterministic analysis logic** rather than an external LLM API. This keeps the demo fast, reproducible, inexpensive, and reliable while still making the decision workflow visible to the user.
+
+## Demo design
+
+The application is a single-page fintech dashboard with:
+
+- A light, minimalist executive interface
+- KPI cards for rapid financial-health scanning
+- A Chart.js monthly cash-flow visualization
+- Color-coded priority cards for P0/P1/P2 risks
+- A management brief designed for a non-finance founder or SME manager
 
 ## Data
 
-All data is **synthetic and generated locally** by `seed_data.py` — no real customer
-data, no live bank feeds. The default dataset is a Nairobi bakery (Kenyan Shilling,
-KES) with realistic, seeded financial problems.
+All data is **synthetic**. No real customer or bank data is used.
 
-## Stack
+`seed_data.py` generates a reproducible 12-month bakery ledger using a fixed random seed. The synthetic ledger contains:
 
-- Python 3 (standard library for data/analysis — no pandas)
-- FastAPI + Uvicorn (API)
-- HTML/CSS/vanilla JS + Chart.js (frontend, no build step)
+- M-Pesa, bank, and cash transactions
+- Retail and wholesale sales
+- Inventory, rent, utilities, and miscellaneous expenses
+- A large wholesale customer early in the year
+- Gradually rising inventory costs
+- A deliberately weak seasonal month
 
-## Run
+The generated CSV is written to:
 
-```sh
-py -3 -m pip install -r requirements.txt
-py -3 seed_data.py                # generate data/bakery_ledger.csv
-py -3 -m uvicorn main:app --port 8000
-```
-
-Then open http://localhost:8000/.
-
-## Structure
-
-```
-app/          analysis, detection, investigation, prioritization, summarization
-data/         generated ledger CSV (git-ignored)
-static/       index.html, styles.css, app.js
-tests/        automated tests for the financial engine
-seed_data.py  synthetic ledger generator
-main.py       FastAPI entry point
-```
+```text
+data/bakery_ledger.csv
