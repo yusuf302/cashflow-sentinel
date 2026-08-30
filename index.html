@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CashFlow Sentinel – Demo</title>
+<style>
+/* Global */
+body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#f7f9fc;color:#1a1a2e}
+.container{max-width:1200px;margin:auto;padding:20px;}
+
+/* Hero */
+.hero{display:flex;align-items:center;justify-content:space-between;padding:20px 0;border-bottom:1px solid #e0e0e0}
+.hero h1{margin:0;font-size:2rem;color:#1a1a2e}
+.hero .subtitle{font-size:0.9rem;color:#555;margin-top:4px}
+.hero .badge{background:#1e90ff;color:#fff;font-size:0.8rem;padding:4px 8px;border-radius:12px;vertical-align:middle}
+
+/* KPI Grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:20px}
+.card{background:#fff;border-radius:8px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.1);color:#1a1a2e;transition:transform 0.2s;}
+.card:hover{transform:translateY(-4px);}
+.card .value{font-size:1.6rem;font-weight:bold;color:#2e7d32}
+.card .label{font-size:0.9rem;margin-top:4px;color:#555}
+
+/* Summary */
+.summary-panel{background:#fff;border-radius:8px;padding:16px;margin-top:20px;box-shadow:0 2px 6px rgba(0,0,0,0.1);color:#1a1a2e}
+.summary-panel h2{margin-top:0;color:#2e7d32}
+.summary-panel p{margin:4px 0;color:#555}
+
+/* Risks */
+.risk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:20px}
+.risk-card{background:#fff;border-radius:8px;padding:12px;position:relative;box-shadow:0 2px 6px rgba(0,0,0,0.1);color:#1a1a2e}
+.risk-card .badge{position:absolute;top:12px;right:12px;font-weight:bold;padding:4px 8px;border-radius:12px;}
+.risk-card .name{font-size:1rem;color:#1a1a2e;margin-bottom:4px}
+.risk-card .evidence{font-size:0.9rem;color:#555;margin:4px 0}
+.risk-card .severity{font-size:0.9rem;color:#555;margin:4px 0}
+.risk-card .action{font-size:0.9rem;color:#555;margin-top:4px}
+
+/* Badge colors */
+.badge-live{background:#1e90ff;color:#fff;}
+.badge-P0{background:#ff6b6b;color:#fff;}
+.badge-P1{background:#ff9f43;color:#fff;}
+.badge-P2{background:#ffd43b;color:#fff;}
+
+/* Chart */
+.chart{margin-top:30px;}
+.canvas-container{background:#fff;border-radius:8px;padding:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);margin-top:30px;}
+.canvas-container canvas{background:#fff;border-radius:8px;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>CashFlow Sentinel – Demo</h1>
+  <div class="subtitle">Agentic SME Financial Risk Monitor</div>
+  <span class="badge badge-live">Live Analysis</span>
+  <div id="error" style="display:none;background:#ffe5e5;padding:10px;border-radius:4px;color:#900;margin-bottom:10px"></div>
+  <div id="summary" class="summary-panel"></div>
+  <div id="metrics" class="kpi-grid"></div>
+  <div id="risks" class="risk-grid"></div>
+  <div class="canvas-container"><canvas id="cashChart"></canvas></div>
+</div>
+<script>
+// Embedded CSV data
+const csvData = `date,type,amount,channel,category,counterparty,description
+2024-01-04,in,2563,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-01-08,in,2209,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-01-24,in,1104,Bank,sales,Local Market,Sale to Local Market
+2024-01-02,in,2447,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-01-17,in,1233,Cash,sales,Town Hall,Sale to Town Hall
+2024-01-23,in,959,Cash,sales,Town Hall,Sale to Town Hall
+2024-01-09,in,1277,M-Pesa,sales,Local Market,Sale to Local Market
+2024-01-23,in,659,M-Pesa,sales,Café A,Sale to Café A
+2024-01-31,in,594,Bank,sales,Local Market,Sale to Local Market
+2024-01-04,in,1118,Bank,sales,Café A,Sale to Café A
+2024-01-26,in,2940,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-01-04,in,580,Cash,sales,Cafe B,Sale to Cafe B
+2024-01-10,in,1091,M-Pesa,sales,Café A,Sale to Café A
+2024-01-23,in,3354,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-01-25,in,1375,M-Pesa,sales,Local Market,Sale to Local Market
+2024-01-28,in,2569,Bank,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-01-21,in,879,Bank,sales,Town Hall,Sale to Town Hall
+2024-01-07,in,1123,Cash,sales,Local Market,Sale to Local Market
+2024-01-06,in,667,Bank,sales,Town Hall,Sale to Town Hall
+2024-01-13,in,1201,Bank,sales,Town Hall,Sale to Town Hall
+2024-01-27,in,734,M-Pesa,sales,Local Market,Sale to Local Market
+2024-01-26,in,567,M-Pesa,sales,Café A,Sale to Café A
+2024-01-30,in,717,Cash,sales,Café A,Sale to Café A
+2024-01-16,in,646,Bank,sales,Cafe B,Sale to Cafe B
+2024-01-05,in,1264,Cash,sales,Café A,Sale to Café A
+2024-01-14,out,800,Bank,expense,inventory,Inventory purchase
+2024-01-29,out,2000,Bank,expense,rent,Monthly rent
+2024-01-19,out,300,Cash,expense,utilities,Utilities bill
+2024-01-13,out,50,Cash,expense,misc,Miscellaneous expense
+2024-02-08,in,1021,Bank,sales,Town Hall,Sale to Town Hall
+2024-02-03,in,656,Cash,sales,Local Market,Sale to Local Market
+2024-02-06,in,1110,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-02-13,in,1041,Bank,sales,Cafe B,Sale to Cafe B
+2024-02-18,in,1196,Cash,sales,Local Market,Sale to Local Market
+2024-02-04,in,1287,Cash,sales,Café A,Sale to Café A
+2024-02-11,in,2890,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-02-15,in,3478,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-02-09,in,1019,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-02-28,in,656,Bank,sales,Town Hall,Sale to Town Hall
+2024-02-25,in,3952,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-02-01,in,519,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-02-12,in,745,M-Pesa,sales,Café A,Sale to Café A
+2024-02-08,in,587,Cash,sales,Local Market,Sale to Local Market
+2024-02-16,in,631,Cash,sales,Town Hall,Sale to Town Hall
+2024-02-16,in,771,Cash,sales,Town Hall,Sale to Town Hall
+2024-02-28,in,1451,Cash,sales,Town Hall,Sale to Town Hall
+2024-02-25,in,1230,Bank,sales,Town Hall,Sale to Town Hall
+2024-02-13,in,948,Cash,sales,Café A,Sale to Café A
+2024-02-15,in,2460,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-02-11,out,840,Bank,expense,inventory,Inventory purchase
+2024-02-01,out,2000,Bank,expense,rent,Monthly rent
+2024-02-19,out,300,Cash,expense,utilities,Utilities bill
+2024-02-18,out,55,Cash,expense,misc,Miscellaneous expense
+2024-03-19,in,1224,Cash,sales,Local Market,Sale to Local Market
+2024-03-02,in,1380,Bank,sales,Local Market,Sale to Local Market
+2024-03-03,in,1185,Bank,sales,Café A,Sale to Café A
+2024-03-07,in,748,Bank,sales,Cafe B,Sale to Cafe B
+2024-03-26,in,599,Cash,sales,Local Market,Sale to Local Market
+2024-03-14,in,978,Cash,sales,Cafe B,Sale to Cafe B
+2024-03-02,in,562,Bank,sales,Local Market,Sale to Local Market
+2024-03-24,in,754,M-Pesa,sales,Local Market,Sale to Local Market
+2024-03-07,in,932,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-03-09,in,953,Cash,sales,Local Market,Sale to Local Market
+2024-03-04,in,3107,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-03-03,in,670,Bank,sales,Town Hall,Sale to Town Hall
+2024-03-16,in,1424,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-03-06,in,771,Bank,sales,Cafe B,Sale to Cafe B
+2024-03-10,in,658,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-03-10,in,1093,Cash,sales,Local Market,Sale to Local Market
+2024-03-18,in,2642,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-03-02,in,558,Cash,sales,Town Hall,Sale to Town Hall
+2024-03-03,out,880,Bank,expense,inventory,Inventory purchase
+2024-03-28,out,2000,Bank,expense,rent,Monthly rent
+2024-03-06,out,300,Cash,expense,utilities,Utilities bill
+2024-03-03,out,60,Cash,expense,misc,Miscellaneous expense
+2024-04-03,in,913,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-04-29,in,1134,M-Pesa,sales,Local Market,Sale to Local Market
+2024-04-14,in,1457,Bank,sales,Café A,Sale to Café A
+2024-04-07,in,744,Bank,sales,Café A,Sale to Café A
+2024-04-13,in,3321,Bank,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-15,in,509,Bank,sales,Local Market,Sale to Local Market
+2024-04-20,in,575,Cash,sales,Local Market,Sale to Local Market
+2024-04-07,in,1455,Bank,sales,Town Hall,Sale to Town Hall
+2024-04-29,in,2500,Bank,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-10,in,3707,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-23,in,1183,Cash,sales,Local Market,Sale to Local Market
+2024-04-10,in,1461,M-Pesa,sales,Local Market,Sale to Local Market
+2024-04-09,in,2219,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-18,in,2577,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-07,in,1203,Cash,sales,Town Hall,Sale to Town Hall
+2024-04-28,in,757,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-04-03,in,545,M-Pesa,sales,Café A,Sale to Café A
+2024-04-11,in,665,Cash,sales,Café A,Sale to Café A
+2024-04-15,in,1074,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-04-04,in,3808,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-29,in,2073,Bank,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-04-19,in,630,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-04-10,in,1420,Bank,sales,Local Market,Sale to Local Market
+2024-04-07,in,862,Cash,sales,Local Market,Sale to Local Market
+2024-04-29,out,919,Bank,expense,inventory,Inventory purchase
+2024-04-28,out,2000,Bank,expense,rent,Monthly rent
+2024-04-14,out,300,Cash,expense,utilities,Utilities bill
+2024-04-20,out,65,Cash,expense,misc,Miscellaneous expense
+2024-05-30,in,1499,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-05-29,in,1254,Bank,sales,Town Hall,Sale to Town Hall
+2024-05-26,in,773,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-05-26,in,1393,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-05-28,in,1336,Bank,sales,Town Hall,Sale to Town Hall
+2024-05-12,in,728,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-05-22,in,2672,Bank,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-05-28,in,3583,Bank,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-05-12,in,1195,Cash,sales,Cafe B,Sale to Cafe B
+2024-05-11,in,1398,Bank,sales,Local Market,Sale to Local Market
+2024-05-06,in,539,M-Pesa,sales,Café A,Sale to Café A
+2024-05-20,in,946,Cash,sales,Café A,Sale to Café A
+2024-05-17,in,3842,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-05-07,in,501,Cash,sales,Cafe B,Sale to Cafe B
+2024-05-30,in,872,Bank,sales,Town Hall,Sale to Town Hall
+2024-05-03,in,1138,Bank,sales,Café A,Sale to Café A
+2024-05-22,in,1019,Bank,sales,Café A,Sale to Café A
+2024-05-22,out,960,Bank,expense,inventory,Inventory purchase
+2024-05-14,out,2000,Bank,expense,rent,Monthly rent
+2024-05-11,out,300,Cash,expense,utilities,Utilities bill
+2024-05-13,out,70,Cash,expense,misc,Miscellaneous expense
+2024-06-18,in,2861,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-06-13,in,1130,Cash,sales,Town Hall,Sale to Town Hall
+2024-06-10,in,811,Bank,sales,Local Market,Sale to Local Market
+2024-06-07,in,976,Bank,sales,Café A,Sale to Café A
+2024-06-15,in,1312,Cash,sales,Cafe B,Sale to Cafe B
+2024-06-06,in,1027,Cash,sales,Café A,Sale to Café A
+2024-06-21,in,1338,M-Pesa,sales,Local Market,Sale to Local Market
+2024-06-22,in,650,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-06-02,in,1125,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-06-15,in,1235,Cash,sales,Town Hall,Sale to Town Hall
+2024-06-13,in,651,Cash,sales,Town Hall,Sale to Town Hall
+2024-06-23,in,3537,M-Pesa,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-06-25,in,1323,Cash,sales,Town Hall,Sale to Town Hall
+2024-06-17,in,1439,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-06-15,in,2951,Cash,sales,Wholesale Co.,Sale to Wholesale Co.
+2024-06-17,in,1472,Bank,sales,Café A,Sale to Café A
+2024-06-20,in,1350,Cash,sales,Cafe B,Sale to Cafe B
+2024-06-15,in,960,Bank,sales,Cafe B,Sale to Cafe B
+2024-06-25,in,1284,Cash,sales,Café A,Sale to Café A
+2024-06-16,out,1000,Bank,expense,inventory,Inventory purchase
+2024-06-21,out,2000,Bank,expense,rent,Monthly rent
+2024-06-08,out,300,Cash,expense,utilities,Utilities bill
+2024-06-09,out,75,Cash,expense,misc,Miscellaneous expense
+2024-07-31,out,1040,Bank,expense,inventory,Inventory purchase
+2024-07-10,out,2000,Bank,expense,rent,Monthly rent
+2024-07-04,out,300,Cash,expense,utilities,Utilities bill
+2024-07-19,out,80,Cash,expense,misc,Miscellaneous expense
+2024-08-30,in,906,Cash,sales,Cafe B,Sale to Cafe B
+2024-08-07,in,604,Cash,sales,Town Hall,Sale to Town Hall
+2024-08-25,in,1315,Cash,sales,Local Market,Sale to Local Market
+2024-08-26,in,1177,Bank,sales,Cafe B,Sale to Cafe B
+2024-08-03,in,512,Bank,sales,Café A,Sale to Café A
+2024-08-27,in,1483,Bank,sales,Cafe B,Sale to Cafe B
+2024-08-21,in,1224,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-08-14,in,1130,Cash,sales,Café A,Sale to Café A
+2024-08-25,in,1345,Cash,sales,Cafe B,Sale to Cafe B
+2024-08-19,in,1350,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-08-09,in,1268,Bank,sales,Town Hall,Sale to Town Hall
+2024-08-19,in,844,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-08-16,in,999,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-08-12,in,786,Cash,sales,Café A,Sale to Café A
+2024-08-23,in,1029,M-Pesa,sales,Local Market,Sale to Local Market
+2024-08-03,out,1080,Bank,expense,inventory,Inventory purchase
+2024-08-08,out,2000,Bank,expense,rent,Monthly rent
+2024-08-24,out,300,Cash,expense,utilities,Utilities bill
+2024-08-14,out,85,Cash,expense,misc,Miscellaneous expense
+2024-09-18,in,1161,Cash,sales,Cafe B,Sale to Cafe B
+2024-09-16,in,595,Bank,sales,Local Market,Sale to Local Market
+2024-09-08,in,813,Cash,sales,Town Hall,Sale to Town Hall
+2024-09-19,in,935,Cash,sales,Café A,Sale to Café A
+2024-09-18,in,777,Bank,sales,Cafe B,Sale to Cafe B
+2024-09-09,in,823,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-09-24,in,696,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-09-24,in,602,M-Pesa,sales,Café A,Sale to Café A
+2024-09-10,in,809,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-09-23,in,546,M-Pesa,sales,Café A,Sale to Café A
+2024-09-18,in,1153,Bank,sales,Town Hall,Sale to Town Hall
+2024-09-04,in,980,Bank,sales,Café A,Sale to Café A
+2024-09-15,in,758,Bank,sales,Local Market,Sale to Local Market
+2024-09-04,in,1003,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-09-19,in,655,M-Pesa,sales,Local Market,Sale to Local Market
+2024-09-26,in,587,M-Pesa,sales,Café A,Sale to Café A
+2024-09-04,in,1120,Cash,sales,Cafe B,Sale to Cafe B
+2024-09-26,in,961,Bank,sales,Cafe B,Sale to Cafe B
+2024-09-10,in,812,Cash,sales,Cafe B,Sale to Cafe B
+2024-09-20,in,1470,M-Pesa,sales,Local Market,Sale to Local Market
+2024-09-21,in,660,M-Pesa,sales,Local Market,Sale to Local Market
+2024-09-06,in,502,Bank,sales,Town Hall,Sale to Town Hall
+2024-09-15,out,1120,Bank,expense,inventory,Inventory purchase
+2024-09-23,out,2000,Bank,expense,rent,Monthly rent
+2024-09-20,out,300,Cash,expense,utilities,Utilities bill
+2024-09-16,out,90,Cash,expense,misc,Miscellaneous expense
+2024-10-02,in,1219,Bank,sales,Café A,Sale to Café A
+2024-10-03,in,1306,Cash,sales,Café A,Sale to Café A
+2024-10-19,in,935,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-10-18,in,1430,Bank,sales,Town Hall,Sale to Town Hall
+2024-10-27,in,669,Bank,sales,Local Market,Sale to Local Market
+2024-10-20,in,949,M-Pesa,sales,Café A,Sale to Café A
+2024-10-15,in,1465,Bank,sales,Cafe B,Sale to Cafe B
+2024-10-17,in,582,Cash,sales,Cafe B,Sale to Cafe B
+2024-10-02,in,1118,Bank,sales,Café A,Sale to Café A
+2024-10-01,in,1283,Cash,sales,Local Market,Sale to Local Market
+2024-10-27,in,1281,M-Pesa,sales,Local Market,Sale to Local Market
+2024-10-16,in,1438,Bank,sales,Cafe B,Sale to Cafe B
+2024-10-06,in,1150,Bank,sales,Cafe B,Sale to Cafe B
+2024-10-03,in,841,Bank,sales,Cafe B,Sale to Cafe B
+2024-10-22,in,837,Bank,sales,Town Hall,Sale to Town Hall
+2024-10-23,in,1333,Cash,sales,Cafe B,Sale to Cafe B
+2024-10-02,in,758,Bank,sales,Café A,Sale to Café A
+2024-10-04,in,1385,Cash,sales,Cafe B,Sale to Cafe B
+2024-10-27,in,923,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-10-07,out,1160,Bank,expense,inventory,Inventory purchase
+2024-10-17,out,2000,Bank,expense,rent,Monthly rent
+2024-10-12,out,300,Cash,expense,utilities,Utilities bill
+2024-10-20,out,95,Cash,expense,misc,Miscellaneous expense
+2024-11-21,in,708,Bank,sales,Local Market,Sale to Local Market
+2024-11-18,in,948,Cash,sales,Café A,Sale to Café A
+2024-11-16,in,1226,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-11-10,in,595,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-11-27,in,1469,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-11-21,in,1455,Cash,sales,Cafe B,Sale to Cafe B
+2024-11-10,in,925,Bank,sales,Café A,Sale to Café A
+2024-11-16,in,892,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-11-30,in,1384,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-11-09,in,848,Cash,sales,Cafe B,Sale to Cafe B
+2024-11-09,in,1243,Bank,sales,Café A,Sale to Café A
+2024-11-27,in,1386,M-Pesa,sales,Cafe B,Sale to Cafe B
+2024-11-15,in,840,Cash,sales,Café A,Sale to Café A
+2024-11-25,in,1455,Bank,sales,Cafe B,Sale to Cafe B
+2024-11-28,in,1085,Bank,sales,Town Hall,Sale to Town Hall
+2024-11-08,in,544,Bank,sales,Cafe B,Sale to Cafe B
+2024-11-24,in,895,Cash,sales,Cafe B,Sale to Cafe B
+2024-11-26,in,1007,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-11-05,in,1390,M-Pesa,sales,Café A,Sale to Café A
+2024-11-28,in,1038,Bank,sales,Local Market,Sale to Local Market
+2024-11-01,in,1391,Cash,sales,Cafe B,Sale to Cafe B
+2024-11-05,in,846,Cash,sales,Café A,Sale to Café A
+2024-11-23,out,1200,Bank,expense,inventory,Inventory purchase
+2024-11-13,out,2000,Bank,expense,rent,Monthly rent
+2024-11-21,out,300,Cash,expense,utilities,Utilities bill
+2024-11-03,out,100,Cash,expense,misc,Miscellaneous expense
+2024-12-28,in,1477,Bank,sales,Cafe B,Sale to Cafe B
+2024-12-21,in,1393,Cash,sales,Cafe B,Sale to Cafe B
+2024-12-02,in,1146,Cash,sales,Town Hall,Sale to Town Hall
+2024-12-30,in,1264,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-12-14,in,954,M-Pesa,sales,Local Market,Sale to Local Market
+2024-12-23,in,547,Bank,sales,Local Market,Sale to Local Market
+2024-12-26,in,883,Bank,sales,Café A,Sale to Café A
+2024-12-05,in,1079,Cash,sales,Cafe B,Sale to Cafe B
+2024-12-26,in,580,Cash,sales,Town Hall,Sale to Town Hall
+2024-12-28,in,1009,Cash,sales,Town Hall,Sale to Town Hall
+2024-12-05,in,970,Bank,sales,Café A,Sale to Café A
+2024-12-22,in,1422,Bank,sales,Cafe B,Sale to Cafe B
+2024-12-22,in,952,Bank,sales,Local Market,Sale to Local Market
+2024-12-19,in,1206,Bank,sales,Cafe B,Sale to Cafe B
+2024-12-15,in,893,Bank,sales,Town Hall,Sale to Town Hall
+2024-12-04,in,1088,Bank,sales,Café A,Sale to Café A
+2024-12-23,in,781,M-Pesa,sales,Cafe B,Sale to Café A
+2024-12-19,in,1432,Cash,sales,Local Market,Sale to Local Market
+2024-12-24,in,1294,M-Pesa,sales,Café A,Sale to Café A
+2024-12-20,in,1151,M-Pesa,sales,Town Hall,Sale to Town Hall
+2024-12-20,out,1240,Bank,expense,inventory,Inventory purchase
+2024-12-09,out,2000,Bank,expense,rent,Monthly rent
+2024-12-22,out,300,Cash,expense,utilities,Utilities bill
+2024-12-25,out,105,Cash,expense,misc,Miscellaneous expense
+`;
+
+// Parse CSV
+const parsed = Papa.parse(csvData, {header:true, skipEmptyLines:true}).data;
+
+// Helper functions
+function sumBy(filterFunc){return parsed.reduce((s, r)=> filterFunc(r)? s + Number(r.amount) : s, 0);}
+
+const totalIn = sumBy(r=> r.type==='in');
+const totalOut = sumBy(r=> r.type==='out');
+const netCash = totalIn - totalOut;
+
+// Top customer concentration
+const salesByCust = {};
+parsed.filter(r=> r.type==='in').forEach(r=>{salesByCust[r.counterparty] = (salesByCust[r.counterparty]||0)+Number(r.amount);});
+const sortedCust = Object.entries(salesByCust).sort((a,b)=>b[1]-a[1]);
+const top3 = sortedCust.slice(0,3);
+const concentrationPerc = top3.reduce((s, [_, amt])=> s+amt, 0)/totalIn*100;
+
+// Expense growth: last 3 months vs previous 3 months
+function monthKey(date){return date.substring(0,7);} // YYYY-MM
+const monthSums = {};
+parsed.forEach(r=>{const mk=monthKey(r.date); monthSums[mk] = (monthSums[mk]||0)+ (r.type==='in'? Number(r.amount): -Number(r.amount));});
+const months = Object.keys(monthSums).sort();
+const last3 = months.slice(-3).reduce((s,m)=> s+monthSums[m],0);
+const prev3 = months.slice(-6,-3).reduce((s,m)=> s+monthSums[m],0);
+const expenseGrowth = ((last3 - prev3)/Math.abs(prev3))*100;
+
+// Misc leakage
+const miscLeak = sumBy(r=> r.type==='out' && r.category==='misc');
+
+// Risks
+const risks = [];
+// 1. Revenue concentration
+risks.push({name:'Revenue Concentration', evidence:`Top 3 customers account for ${concentrationPerc.toFixed(1)}% of sales.`, severity:concentrationPerc, action:'Diversify customer base or negotiate volume discounts.'});
+// 2. Inventory expense growth
+risks.push({name:'Inventory Cost Surge', evidence:`Inventory expense grew by ${expenseGrowth.toFixed(1)}% over last 3 months.`, severity:Math.abs(expenseGrowth), action:'Review supplier contracts or explore cheaper alternatives.'});
+// 3. Misc leakage
+// Compute worst monthly cash deficit
+const worstMonthInfo = Object.entries(monthSums).reduce((min, [m, val])=> val < min.val ? {month:m, val} : min, {month:null, val:Infinity});
+risks.push({name:'Monthly Cash Deficit', evidence:`Worst monthly cash flow is ${worstMonthInfo.val.toFixed(2)} KES in ${worstMonthInfo.month}.`, severity: Math.abs(worstMonthInfo.val), action:'Review drivers of the deficit and maintain a minimum operating cash buffer.'});
+
+// Rank
+risks.sort((a,b)=> b.severity - a.severity);
+risks.forEach((r,i)=>{r.rank = i===0?'P0':(i===1?'P1':'P2');});
+
+// Summary text
+const summaryText = `The bakery’s cash position is KES ${netCash.toLocaleString()} (inflows KES ${totalIn.toLocaleString()}, outflows KES ${totalOut.toLocaleString()}). ${risks[0].name} is the highest priority (${risks[0].rank}).`;
+
+// Render
+document.getElementById('summary').innerHTML = `<h2>Management Summary</h2><p>${summaryText}</p>`;
+
+const metricsDiv = document.getElementById('metrics');
+metricsDiv.innerHTML = `<div class='card'><h3>Total Inflows</h3><p>KES ${totalIn.toLocaleString()}</p></div>
+<div class='card'><h3>Total Outflows</h3><p>KES ${totalOut.toLocaleString()}</p></div>
+<div class='card'><h3>Net Cash Flow</h3><p>KES ${netCash.toLocaleString()}</p></div>
+<div class='card'><h3>Revenue Concentration</h3><p>${concentrationPerc.toFixed(1)}% of sales by top 3 customers.</p></div>
+<div class='card'><h3>Expense Growth (last 3 months vs prev 3)</h3><p>${expenseGrowth.toFixed(1)}% change.</p></div>`;
+
+const risksDiv = document.getElementById('risks');
+risksDiv.innerHTML = '<h2>Top Risks</h2>' + risks.map((r,i)=>`<div class='card'><h3>${r.rank}: ${r.name}</h3><p>${r.evidence}</p><p>Severity: ${r.severity.toFixed(1)}%</p><p>Action: ${r.action}</p></div>`).join('');
+
+// Chart
+const labels = months;
+const dataPoints = months.map(m=> monthSums[m]);
+const ctx = document.getElementById('cashChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {labels, datasets:[{label:'Cash Flow (KES)',data:dataPoints,fill:false,borderColor:'blue'}]},
+  options:{responsive:true,scales:{y:{beginAtZero:true}}}
+});
+</script>
+</body>
+</html>
