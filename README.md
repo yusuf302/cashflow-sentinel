@@ -71,3 +71,37 @@ The generated CSV is written to:
 
 ```text
 data/bakery_ledger.csv
+```
+
+## View the demo
+
+The committed `index.html` is a static presentation. From the repository root, serve it with Python:
+
+```bash
+python -m http.server 8000
+```
+
+Open `http://localhost:8000` in your browser. The demo uses externally hosted Papa Parse and Chart.js dependencies, so internet access is needed for CSV parsing and chart rendering.
+
+To generate the illustrative ledger separately:
+
+```bash
+python seed_data.py
+```
+
+Inspect the script before running and ensure its output directory exists if required. Generating a CSV does not by itself connect that file to the static dashboard.
+
+## Implementation status
+
+The repository contains a static dashboard, synthetic-data generator, and an `app/` package with an initializer. Although `requirements.txt` lists FastAPI and Uvicorn, a working API service is not present in the inspected repository. Do not use a Uvicorn command until an application entry point has been implemented.
+
+The prototype demonstrates financial triage using deterministic logic and illustrative values. It does not currently use an LLM, execute payments, or autonomously act on real business accounts. The demo is a hackathon prototype rather than a validated forecasting or production risk system.
+
+## Known analytical limitations
+
+The current `expenseGrowth` calculation compares net cash flow across two three-month windows, although the interface labels it as expense or inventory growth. Risk ranking also compares unlike units (percentages and currency amounts), and negative cash flow is not a prerequisite for the displayed deficit card. Validate and correct these calculations before using the demo for real decisions; its current priority labels are illustrative.
+
+## Author
+
+[Yusuf Abdallah Jongo](https://yusuf-jongo.vercel.app/) — Economist, Data Analyst & AI and Digital Solutions Builder.
+
